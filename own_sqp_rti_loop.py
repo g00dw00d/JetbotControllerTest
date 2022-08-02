@@ -109,7 +109,7 @@ def export_unicycle_ode_model_with_LocalConstraints():
 t_sim = 0
 x0 = np.array([0.5, 0.0, math.pi / 2]) + 0.1 * np.random.randn()
 
-def get_reference(t,Ts,N):
+def get_reference_circle(t,Ts,N):
     ref_rad = 0.5
     ref_T = 20
     t_vec = t + np.linspace(t,t + N * Ts, N + 1)
@@ -122,17 +122,78 @@ def get_reference(t,Ts,N):
     input_ref = np.vstack((v_ref.reshape(1,N), omega_ref.reshape(1,N)))
     return state_ref, input_ref
 
-[state_plot, input_plot] = get_reference(0,0.1,200)
+def get_reference_pointsintersection(t,Ts,N):
+    p_seq = np.zeros((2,4))
+    p_seq[0,0] = np.array([0.5])
+    p_seq[1,0] = np.array([0.5])
+    p_seq[0,1] = np.array([-0.5])
+    p_seq[1,1] = np.array([0.5])
+    p_seq[0,2] = np.array([-0.5])
+    p_seq[1,2] = np.array([-0.5])
+    p_seq[0,3] = np.array([0.5])
+    p_seq[1,3] = np.array([-0.5])
 
-# print(input_plot)
+    speed = 0.2
+
+    t_vec = t + np.linspace(0,N * Ts, N + 1)
+
+    x_pos_ref = 0.5 * np.ones(N + 1)
+    y_pos_ref = np.zeros(N  + 1)
+    theta_ref = math.pi / 2 * np.ones(N + 1)
+    v_ref = np.zeros(N)
+    omega_ref = np.zeros(N)
+
+    for k in range(N + 1):
+        if (t_vec[k] < 0.5 / speed):
+            if k < N:
+                v_ref[k] = speed
+                omega_ref[k]  = 0.0
+            theta_ref[k]  = math.pi / 2
+            x_pos_ref[k]  = 0.5
+            y_pos_ref[k]  = t_vec[k] * speed
+        if ((t_vec[k] >= 0.5 / speed) and (t_vec[k] < 1.5 / speed)):
+            if k < N:
+                v_ref[k]  = speed
+                omega_ref[k]  = 0.0
+            theta_ref[k]  = math.pi
+            x_pos_ref[k]  = 0.5 - (t_vec[k] - 0.5 / speed) * speed 
+            y_pos_ref[k]  = 0.5
+        if ((t_vec[k] >= 1.5 / speed) and (t_vec[k] < 2.5 / speed)):
+            if k < N:
+                v_ref[k]  = speed
+                omega_ref[k]  = 0.0
+            theta_ref[k]  = -math.pi / 2
+            x_pos_ref[k]  = -0.5
+            y_pos_ref[k]  = 0.5 - (t_vec[k] - 1.5 / speed) * speed
+        if ((t_vec[k] >= 2.5 / speed) and (t_vec[k] < 3.5 / speed)):
+            if k < N:
+                v_ref[k]  = speed
+                omega_ref[k] = 0.0
+            theta_ref[k] = 0.0
+            x_pos_ref[k]  = -0.5 + (t_vec[k] - 2.5 / speed) * speed
+            y_pos_ref[k]  = -0.5
+        if ((t_vec[k] >= 3.5 / speed) and (t_vec[k] < 4.0 / speed)):
+            if k < N:
+                v_ref[k]  = speed 
+                omega_ref[k]  = 0.
+            theta_ref[k]  = math.pi / 2
+            x_pos_ref[k]  = 0.5
+            y_pos_ref[k]  = -0.5 + (t_vec[k] - 3.5 / speed) * speed
+        
+    state_ref = np.vstack((x_pos_ref.reshape(1,N + 1), y_pos_ref.reshape(1,N + 1), theta_ref.reshape(1,N + 1)))
+    input_ref = np.vstack((v_ref.reshape(1,N), omega_ref.reshape(1,N)))
+    return state_ref, input_ref
+
+# [state_plot, input_plot] = get_reference_circle(0,0.1,200)
+[state_plot, input_plot] = get_reference_pointsintersection(0,0.1,200)
+
 # plt.figure()
 # plt.plot(state_plot[0,:],state_plot[1,:],'k')
 # plt.xlabel("$x$")
 # plt.ylabel("$y$")
 # plt.axis('square')
 # plt.show()
-# print(state_plot[2,:])
-# print(input_plot[1,:])
+
 
 
 
@@ -158,7 +219,7 @@ ocp.constraints.x0 = x0
 model = export_unicycle_ode_model_with_LocalConstraints()
 ocp.model = model
 
-Tf = 1.0
+Tf = 2.0
 nx = model.x.size()[0]
 nu = model.u.size()[0]
 nparam = model.p.size()[0]
@@ -171,7 +232,7 @@ N = 40
 ocp.dims.N = N
 
 # set cost
-Q = np.diag([100.0, 100.0, 1.0])
+Q = np.diag([100.0, 100.0, 50.0])
 R = np.diag([0.1, 0.1])
 
 W_e = 1 * Q
@@ -187,6 +248,7 @@ ocp.cost.cost_type_e = 'LINEAR_LS'
 Vx = np.zeros((ny, nx))
 Vx[:nx,:nx] = np.eye(nx)
 ocp.cost.Vx = Vx
+
 
 Vx_e = np.zeros((ny_e, nx))
 Vx_e[:nx, :nx] = np.eye(nx)
@@ -218,12 +280,13 @@ ocp.constraints.lg = np.array([r_input_min, l_input_min])
 ocp.constraints.ug = np.array([r_input_max, l_input_max])
 
 # set soft contraint penatly for local safe set
+M = 10 * np.amax(W) * N
 ocp.cost.zl = np.array([0.])
 ocp.cost.zl_e = np.array([0.])
 ocp.cost.Zl = np.array([0.])
 ocp.cost.Zl_e = np.array([0.])
-ocp.cost.zu = 100. * np.amax(W_e) * np.ones((nsh,))
-ocp.cost.zu_e = 100. * np.amax(W_e) * np.ones((nsh,))
+ocp.cost.zu = M * np.ones((nsh,))
+ocp.cost.zu_e = M * np.ones((nsh,))
 ocp.cost.Zu = np.array([0.])
 ocp.cost.Zu_e = np.array([0.])
 ocp.constraints.ush = np.zeros(nsh)
@@ -252,7 +315,7 @@ ocp.solver_options.tf = Tf
 
 ocp_solver = AcadosOcpSolver(ocp, json_file = 'acados_ocp.json')
 
-Nsim = 5 *  N
+Nsim = 10 *  N
 
 simX = np.ndarray((nx, Nsim + 1))
 simU = np.ndarray((nu, Nsim))
@@ -269,7 +332,7 @@ for j in range(nx):
 for i in range(Nsim):
     print("Time ",t_sim)
     # reference
-    [state_ref, input_ref] = get_reference(t_sim, Ts, N)
+    [state_ref, input_ref] = get_reference_pointsintersection(t_sim, Ts, N)
 
     for k in range(N):
         ocp_solver.set(k, "yref", np.array([state_ref[0,k], state_ref[1,k], state_ref[2,k], input_ref[0,k], input_ref[1,k]]))
@@ -378,7 +441,7 @@ for i in range(Nsim):
     plt.xlabel("$k$")
 
     # plt.show()
-    plt.pause(Ts)
+    plt.pause(Ts / 4)
 
 
     # get next state
