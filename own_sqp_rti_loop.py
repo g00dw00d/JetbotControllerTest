@@ -36,7 +36,7 @@
 import sys
 from tracemalloc import take_snapshot
 
-from cvxpy import vstack
+from cvxpy import hstack, vstack
 # sys.path.insert(0, 'common')
 
 import time
@@ -232,9 +232,9 @@ def get_reference_pointsintersection(p0,t,Ts,N):
     input_ref = np.vstack((v_ref.reshape(1,N), omega_ref.reshape(1,N)))
     return state_ref, input_ref
 
-def create_tajectory_randpoints():
+def create_tajectory_randpoints(points):
     poses = []
-    points = [[-1.352, -0.840], [-0.088,1.409],[1.306,-0.948],[0.869,2.150],[-1.155,2.208],[-0.067,-1.547],[0.,0.],[0.,0.4],[0.3,0.]]
+    # points = [[-1.352, -0.840], [-0.088,1.409],[1.306,-0.948],[0.869,2.150],[-1.155,2.208],[-0.067,-1.547],[0.,0.],[0.,0.4],[0.3,0.]]
     for p in points :
         pose = Pose2D()
         pose.x = p[0]
@@ -249,6 +249,7 @@ def add_time_to_wayposes(poses,t0,desired_speed,mode = 'ignore_corners'):
         for i in range(W):
             timed_poses[0,i] = poses[i].x
             timed_poses[1,i] = poses[i].y
+            timed_poses[2,i] = poses[i].theta
             if i > 0:
                 timed_poses[2,i] = np.arctan2(np.sin(poses[i].y - poses[i - 1].y), np.cos(poses[i].x - poses[i - 1].x))
                 timed_poses[3,i] = timed_poses[3,i - 1] + 1 / desired_speed * np.sqrt((poses[i].y - poses[i - 1].y) ** 2 + (poses[i].x - poses[i - 1].x) ** 2)
@@ -256,15 +257,12 @@ def add_time_to_wayposes(poses,t0,desired_speed,mode = 'ignore_corners'):
                 timed_poses[3,i] = t0
     return timed_poses
 
-
 def generate_reference_trajectory_from_timed_wayposes(timed_poses,t,Ts,N,mode = 'ignore_corners'):
-    x_pos_ref = np.ones(N + 1)
+    x_pos_ref = np.zeros(N + 1)
     y_pos_ref = np.zeros(N  + 1)
-    theta_ref = np.ones(N + 1)
+    theta_ref = np.zeros(N + 1)
     v_ref = np.zeros(N + 1)
     omega_ref = np.zeros(N + 1)
-
-
     if mode == 'ignore_corners':
         t_vec = t + np.linspace(0,N * Ts, N + 1)
         for k in range(N + 1):
@@ -282,9 +280,12 @@ def generate_reference_trajectory_from_timed_wayposes(timed_poses,t,Ts,N,mode = 
     input_ref = np.vstack((v_ref[:-1].reshape(1,N), omega_ref[:-1].reshape(1,N)))
     return state_ref, input_ref
 
-wayposes = create_tajectory_randpoints()
-timed_poses = add_time_to_wayposes(wayposes,0,0.3)
-[state_plot, input_plot] = generate_reference_trajectory_from_timed_wayposes(timed_poses,0,0.1,1200)
+points = [[0.,0.],[-1.352, -0.840], [-0.088,1.409],[1.306,-0.948],[0.869,2.150],[-1.155,2.208],[-0.067,-1.547],[0.,0.4],[0.3,0.],[0.,0.]]
+speed_des = 0.2
+wayposes = create_tajectory_randpoints(points)
+timed_poses = add_time_to_wayposes(wayposes,0,speed_des)
+print(timed_poses)
+[state_plot, input_plot] = generate_reference_trajectory_from_timed_wayposes(timed_poses,0,0.1,950)
 # [state_plot, input_plot] = get_reference_circle(0,0.1,200)
 # [state_plot, input_plot] = get_reference_pointsintersection(x0,0,0.1,200)
 
@@ -322,7 +323,7 @@ ocp.constraints.x0 = x0
 model = export_unicycle_ode_model_with_LocalConstraints()
 ocp.model = model
 
-Tf = 2.0
+Tf = 4.0
 nx = model.x.size()[0]
 nu = model.u.size()[0]
 nparam = model.p.size()[0]
@@ -338,7 +339,7 @@ ocp.dims.N = N
 Q = np.diag([1.0, 1.0, 0.1])
 R = np.diag([0.001, 0.001])
 
-W_e = 1 * Q
+W_e = 10 * Q
 W = scipy.linalg.block_diag(Q, R)
 ocp.cost.W_e = W_e
 ocp.cost.W = W
@@ -432,6 +433,7 @@ simT = np.ndarray((1, Nsim + 1))
 xnext = x0
 t_sim = 0.0
 Ts = Tf / N
+
 
 simT[0,0] = t_sim
 for j in range(nx):
