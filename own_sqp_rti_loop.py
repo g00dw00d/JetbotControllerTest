@@ -51,6 +51,11 @@ import matplotlib.pyplot as plt
 from acados_template import AcadosModel
 from casadi import SX, vertcat, sin, cos, Function
 
+class Pose2D:
+    x = np.array([0.]) 
+    y = np.array([0.]) 
+    theta = np.array([0.]) 
+
 def export_unicycle_ode_model_with_LocalConstraints():
 
     model_name = 'unicycle_ode'
@@ -106,13 +111,12 @@ def export_unicycle_ode_model_with_LocalConstraints():
 
     return model
 
-t_sim = 0
-x0 = np.array([0.5, 0.0, math.pi / 2]) + 0.1 * np.random.randn()
+
 
 def get_reference_circle(t,Ts,N):
     ref_rad = 0.5
-    ref_T = 20
-    t_vec = t + np.linspace(t,t + N * Ts, N + 1)
+    ref_T = 10
+    t_vec = t + np.linspace(0,N * Ts, N + 1)
     x_pos_ref = ref_rad * np.cos(2 * math.pi / ref_T * t_vec)
     y_pos_ref = ref_rad * np.sin(2 * math.pi / ref_T * t_vec)
     v_ref = 2 * math.pi * ref_rad / ref_T * np.ones(N)
@@ -122,7 +126,7 @@ def get_reference_circle(t,Ts,N):
     input_ref = np.vstack((v_ref.reshape(1,N), omega_ref.reshape(1,N)))
     return state_ref, input_ref
 
-def get_reference_pointsintersection(t,Ts,N):
+def get_reference_pointsintersection(p0,t,Ts,N):
     p_seq = np.zeros((2,4))
     p_seq[0,0] = np.array([0.5])
     p_seq[1,0] = np.array([0.5])
@@ -139,15 +143,55 @@ def get_reference_pointsintersection(t,Ts,N):
 
     x_pos_ref = 0.5 * np.ones(N + 1)
     y_pos_ref = np.zeros(N  + 1)
+    # theta_ref = (np.arctan2(np.sin(math.pi / 2 - p0[2]),np.cos(math.pi / 2 - p0[2])) + p0[2]) * np.ones(N + 1)
     theta_ref = math.pi / 2 * np.ones(N + 1)
     v_ref = np.zeros(N)
     omega_ref = np.zeros(N)
+    
+    if (t_vec[0] < 0.5 / speed):
+        v_ref[0] = speed
+        omega_ref[0]  = 0.0
+        # theta_ref[0]  = np.arctan2(np.sin(math.pi / 2 - p0[2]),np.cos(math.pi / 2 - p0[2])) + p0[2]
+        theta_ref[0]  = math.pi / 2
+        x_pos_ref[0]  = 0.5
+        y_pos_ref[0]  = t_vec[0] * speed
+    if ((t_vec[0] >= 0.5 / speed) and (t_vec[0] < 1.5 / speed)):
+        v_ref[0]  = speed
+        omega_ref[0]  = 0.0
+        # theta_ref[0]  = np.arctan2(np.sin(math.pi - p0[2]),np.cos(math.pi - p0[2])) + p0[2]
+        theta_ref[0]  = math.pi
+        x_pos_ref[0]  = 0.5 - (t_vec[0] - 0.5 / speed) * speed 
+        y_pos_ref[0]  = 0.5
+    if ((t_vec[0] >= 1.5 / speed) and (t_vec[0] < 2.5 / speed)):
+        v_ref[0]  = speed
+        omega_ref[0]  = 0.0        # theta_ref[0]  = np.arctan2(np.sin(-math.pi / 2 - p0[2]),np.cos(-math.pi / 2 - p0[2])) + p0[2]
 
-    for k in range(N + 1):
+        # theta_ref[0]  = np.arctan2(np.sin(-math.pi / 2 - p0[2]),np.cos(-math.pi / 2 - p0[2])) + p0[2]
+        theta_ref[0]  = -math.pi / 2
+        x_pos_ref[0]  = -0.5
+        y_pos_ref[0]  = 0.5 - (t_vec[0] - 1.5 / speed) * speed
+    if ((t_vec[0] >= 2.5 / speed) and (t_vec[0] < 3.5 / speed)):
+        v_ref[0]  = speed
+        omega_ref[0] = 0.0
+        # theta_ref[0] = np.arctan2(np.sin(0.0 - p0[2]),np.cos(0.0 - p0[2])) + p0[2]
+        theta_ref[0] = 0.0 
+        x_pos_ref[0]  = -0.5 + (t_vec[0] - 2.5 / speed) * speed
+        y_pos_ref[0]  = -0.5
+    if ((t_vec[0] >= 3.5 / speed) and (t_vec[0] < 4.0 / speed)):
+        v_ref[0]  = speed 
+        omega_ref[0]  = 0.
+        # theta_ref[0]  = np.arctan2(np.sin(math.pi / 2 - p0[2]),np.cos(math.pi / 2 - p0[2])) + p0[2]
+        theta_ref[0]  = math.pi / 2
+        x_pos_ref[0]  =  0.5
+        y_pos_ref[0]  = -0.5 + (t_vec[0] - 3.5 / speed) * speed
+
+    for kp in range(N):
+        k = 1 + kp
         if (t_vec[k] < 0.5 / speed):
             if k < N:
                 v_ref[k] = speed
                 omega_ref[k]  = 0.0
+            # theta_ref[k]  = np.arctan2(np.sin(math.pi / 2 - theta_ref[kp]),np.cos(math.pi / 2 - theta_ref[kp])) + theta_ref[kp]
             theta_ref[k]  = math.pi / 2
             x_pos_ref[k]  = 0.5
             y_pos_ref[k]  = t_vec[k] * speed
@@ -155,6 +199,7 @@ def get_reference_pointsintersection(t,Ts,N):
             if k < N:
                 v_ref[k]  = speed
                 omega_ref[k]  = 0.0
+            # theta_ref[k]  = np.arctan2(np.sin(math.pi - theta_ref[kp]),np.cos(math.pi - theta_ref[kp])) + theta_ref[kp]
             theta_ref[k]  = math.pi
             x_pos_ref[k]  = 0.5 - (t_vec[k] - 0.5 / speed) * speed 
             y_pos_ref[k]  = 0.5
@@ -162,6 +207,7 @@ def get_reference_pointsintersection(t,Ts,N):
             if k < N:
                 v_ref[k]  = speed
                 omega_ref[k]  = 0.0
+            # theta_ref[k]  = np.arctan2(np.sin(-math.pi / 2 - theta_ref[kp]),np.cos(-math.pi / 2 - theta_ref[kp])) + theta_ref[kp]
             theta_ref[k]  = -math.pi / 2
             x_pos_ref[k]  = -0.5
             y_pos_ref[k]  = 0.5 - (t_vec[k] - 1.5 / speed) * speed
@@ -169,6 +215,7 @@ def get_reference_pointsintersection(t,Ts,N):
             if k < N:
                 v_ref[k]  = speed
                 omega_ref[k] = 0.0
+            # theta_ref[k] = np.arctan2(np.sin(0theta_ref[k] = np.arctan2(np.sin(0.0.0 - theta_ref[kp]),np.cos(0.0 - theta_ref[kp])) + theta_ref[kp]
             theta_ref[k] = 0.0
             x_pos_ref[k]  = -0.5 + (t_vec[k] - 2.5 / speed) * speed
             y_pos_ref[k]  = -0.5
@@ -176,6 +223,7 @@ def get_reference_pointsintersection(t,Ts,N):
             if k < N:
                 v_ref[k]  = speed 
                 omega_ref[k]  = 0.
+            # theta_ref[k]  = np.arctan2(np.sin(math.pi / 2 - theta_ref[kp]),np.cos(math.pi / 2 - theta_ref[kp])) + theta_ref[kp]
             theta_ref[k]  = math.pi / 2
             x_pos_ref[k]  = 0.5
             y_pos_ref[k]  = -0.5 + (t_vec[k] - 3.5 / speed) * speed
@@ -184,17 +232,72 @@ def get_reference_pointsintersection(t,Ts,N):
     input_ref = np.vstack((v_ref.reshape(1,N), omega_ref.reshape(1,N)))
     return state_ref, input_ref
 
+def create_tajectory_randpoints():
+    poses = []
+    points = [[-1.352, -0.840], [-0.088,1.409],[1.306,-0.948],[0.869,2.150],[-1.155,2.208],[-0.067,-1.547],[0.,0.],[0.,0.4],[0.3,0.]]
+    for p in points :
+        pose = Pose2D()
+        pose.x = p[0]
+        pose.y = p[1]
+        poses.append(pose)
+    return poses
+
+def add_time_to_wayposes(poses,t0,desired_speed,mode = 'ignore_corners'):
+    W = len(poses)
+    timed_poses = np.zeros((4,W))
+    if mode == 'ignore_corners':
+        for i in range(W):
+            timed_poses[0,i] = poses[i].x
+            timed_poses[1,i] = poses[i].y
+            if i > 0:
+                timed_poses[2,i] = np.arctan2(np.sin(poses[i].y - poses[i - 1].y), np.cos(poses[i].x - poses[i - 1].x))
+                timed_poses[3,i] = timed_poses[3,i - 1] + 1 / desired_speed * np.sqrt((poses[i].y - poses[i - 1].y) ** 2 + (poses[i].x - poses[i - 1].x) ** 2)
+            else:
+                timed_poses[3,i] = t0
+    return timed_poses
+
+
+def generate_reference_trajectory_from_timed_wayposes(timed_poses,t,Ts,N,mode = 'ignore_corners'):
+    x_pos_ref = np.ones(N + 1)
+    y_pos_ref = np.zeros(N  + 1)
+    theta_ref = np.ones(N + 1)
+    v_ref = np.zeros(N + 1)
+    omega_ref = np.zeros(N + 1)
+
+
+    if mode == 'ignore_corners':
+        t_vec = t + np.linspace(0,N * Ts, N + 1)
+        for k in range(N + 1):
+            waypose_times = timed_poses[3,:]
+            idx_poses_after_t = np.argwhere(waypose_times > t_vec[k])
+            if idx_poses_after_t.size > 0:
+                idx_k = idx_poses_after_t[0]
+                if idx_k > 0:
+                    v_ref[k] = np.sqrt((timed_poses[1,idx_k] - timed_poses[1,idx_k - 1]) ** 2 + (timed_poses[0,idx_k] - timed_poses[0,idx_k - 1]) ** 2) / (timed_poses[3,idx_k] - timed_poses[3,idx_k - 1])
+                    theta_ref[k] = np.arctan2(timed_poses[1,idx_k] - timed_poses[1,idx_k - 1], timed_poses[0,idx_k] - timed_poses[0,idx_k - 1])
+                    l = (t_vec[k] - timed_poses[3,idx_k - 1]) / (timed_poses[3,idx_k] - timed_poses[3,idx_k - 1])
+                    x_pos_ref[k] = l * timed_poses[0,idx_k] + (1 - l) * timed_poses[0,idx_k - 1]
+                    y_pos_ref[k] = l * timed_poses[1,idx_k] + (1 - l) * timed_poses[1,idx_k - 1]
+    state_ref = np.vstack((x_pos_ref.reshape(1,N + 1), y_pos_ref.reshape(1,N + 1), theta_ref.reshape(1,N + 1)))
+    input_ref = np.vstack((v_ref[:-1].reshape(1,N), omega_ref[:-1].reshape(1,N)))
+    return state_ref, input_ref
+
+wayposes = create_tajectory_randpoints()
+timed_poses = add_time_to_wayposes(wayposes,0,0.3)
+[state_plot, input_plot] = generate_reference_trajectory_from_timed_wayposes(timed_poses,0,0.1,1200)
 # [state_plot, input_plot] = get_reference_circle(0,0.1,200)
-[state_plot, input_plot] = get_reference_pointsintersection(0,0.1,200)
+# [state_plot, input_plot] = get_reference_pointsintersection(x0,0,0.1,200)
 
-# plt.figure()
-# plt.plot(state_plot[0,:],state_plot[1,:],'k')
-# plt.xlabel("$x$")
-# plt.ylabel("$y$")
-# plt.axis('square')
-# plt.show()
+plt.figure()
+plt.plot(state_plot[0,:],state_plot[1,:],'k')
+plt.xlabel("$x$")
+plt.ylabel("$y$")
+plt.axis('square')
+plt.show()
 
 
+t_sim = 0
+x0 = state_plot[:3,0] + 0.2 * np.random.randn(3)
 
 
 # parameters for imput constraints 
@@ -202,10 +305,10 @@ WR = 0.03
 WS = 0.11
 r_a = 35.
 l_a = 35.
-r_input_max = 0.4
-r_input_min = -0.4
-l_input_max = 0.4
-l_input_min = -0.4
+r_input_max = 0.3
+r_input_min = -0.3
+l_input_max = 0.3
+l_input_min = -0.3
 
 # radius of safe set
 sr = 0.25 
@@ -232,8 +335,8 @@ N = 40
 ocp.dims.N = N
 
 # set cost
-Q = np.diag([100.0, 100.0, 50.0])
-R = np.diag([0.1, 0.1])
+Q = np.diag([1.0, 1.0, 0.1])
+R = np.diag([0.001, 0.001])
 
 W_e = 1 * Q
 W = scipy.linalg.block_diag(Q, R)
@@ -260,7 +363,12 @@ ocp.cost.Vu = Vu
 ocp.cost.Vu_0 = Vu
 
 
-# set intial references
+# set intial referencesplt.figure()
+# plt.plot(state_plot[0,:],state_plot[1,:],'k')
+# plt.xlabel("$x$")
+# plt.ylabel("$y$")
+# plt.axis('square')
+# plt.show()
 ocp.cost.yref  = np.zeros(ny)
 ocp.cost.yref_e = np.zeros(ny_e)
 # ocp.cost.yref[0] = x_ref[0]
@@ -280,7 +388,7 @@ ocp.constraints.lg = np.array([r_input_min, l_input_min])
 ocp.constraints.ug = np.array([r_input_max, l_input_max])
 
 # set soft contraint penatly for local safe set
-M = 10 * np.amax(W) * N
+M = 10 * np.amax(W)
 ocp.cost.zl = np.array([0.])
 ocp.cost.zl_e = np.array([0.])
 ocp.cost.Zl = np.array([0.])
@@ -315,7 +423,7 @@ ocp.solver_options.tf = Tf
 
 ocp_solver = AcadosOcpSolver(ocp, json_file = 'acados_ocp.json')
 
-Nsim = 10 *  N
+Nsim = 20 *  N
 
 simX = np.ndarray((nx, Nsim + 1))
 simU = np.ndarray((nu, Nsim))
@@ -331,42 +439,44 @@ for j in range(nx):
 
 for i in range(Nsim):
     print("Time ",t_sim)
-    # reference
-    [state_ref, input_ref] = get_reference_pointsintersection(t_sim, Ts, N)
-
-    for k in range(N):
-        ocp_solver.set(k, "yref", np.array([state_ref[0,k], state_ref[1,k], state_ref[2,k], input_ref[0,k], input_ref[1,k]]))
-        ocp_solver.set(k, "p", np.array([state_ref[0,k], state_ref[1,k]]))
-    ocp_solver.set(N, "yref",np.array([state_ref[0,N], state_ref[1,N], state_ref[2,N]]))
-    ocp_solver.set(N, "p", np.array([state_ref[0,N], state_ref[1,N]]))
-    t = time.time()
-    
-    # preparation rti_phase
-    ocp_solver.options_set('rti_phase', 1)
-    status = ocp_solver.solve()
-
-    phase1_time = time.time() - t
-    print("Phase 1 time time is",phase1_time,"s")
 
     # update initial condition
-    x0 = xnext
+    x0[0] = xnext[0]
+    x0[1] = xnext[1]
+    thetanext_wind = np.arctan2(np.sin(xnext[2] - x0[2]), np.cos(xnext[2] - x0[2])) + xnext[2]
+    x0[2] = thetanext_wind
+    # x0[2] = np.remainder(xnext[2] + math.pi, 2 * math.pi) - math.pi
 
     ocp_solver.set(0, "lbx", x0)
     ocp_solver.set(0, "ubx", x0)
-    
+
+    # reference
+    # [state_ref, input_ref] = get_reference_pointsintersection(xnext,t_sim, Ts, N)
+    # [state_ref, input_ref] = get_reference_circle(t_sim, Ts, N)
+    [state_ref, input_ref] = generate_reference_trajectory_from_timed_wayposes(timed_poses,t_sim,Ts,N)
+
+
+    for k in range(N):
+        if k == 0:
+            thetaref_k = np.arctan2(np.sin(state_ref[2,k] - xnext[2]), np.cos(state_ref[2,k] - xnext[2])) + xnext[2]
+        else:
+            thetaref_k = np.arctan2(np.sin(state_ref[2,k] - thetaref_k), np.cos(state_ref[2,k] - thetaref_k)) + thetaref_k        
+        ocp_solver.set(k, "yref", np.array([state_ref[0,k], state_ref[1,k],thetaref_k, input_ref[0,k], input_ref[1,k]]))
+        ocp_solver.set(k, "p", np.array([state_ref[0,k], state_ref[1,k]]))
+    thetaref_N = np.arctan2(np.sin(state_ref[2,N] - thetaref_k), np.cos(state_ref[2,N] - thetaref_k)) + thetaref_k 
+    ocp_solver.set(N, "yref", np.array([state_ref[0,N], state_ref[1,N], thetaref_k]))
+    ocp_solver.set(N, "p", np.array([state_ref[0,N], state_ref[1,N]]))
+
+    # preparation rti_phase
+    ocp_solver.options_set('rti_phase', 0)
     t = time.time()
-
-    # feedback rti_phase
-    ocp_solver.options_set('rti_phase', 2)
     status = ocp_solver.solve()
-
-    phase2_time = time.time() - t
-    print("Phase 2 time time is",phase2_time,"s")
+    phase0_time = time.time() - t
+    print("Solver time is",phase0_time,"s")
 
     if status != 0:
         raise Exception(f'acados returned status {status}.')
 
-    
     # get solution
     # x0 = ocp_solver.get(0, "x")
     u0 = ocp_solver.get(0, "u")
@@ -401,9 +511,12 @@ for i in range(Nsim):
     plt.figure(2)
     plt.subplot(321)
     plt.cla()
-    plt.plot(np.linspace(0,N,N + 1),np.remainder(state_ref[2,:],2 * math.pi) - math.pi,'r--')
-    plt.plot(np.linspace(0,N,N + 1),np.remainder(xpred[2,:],2 * math.pi) - math.pi,'g:')
-    plt.axis([0, N, -math.pi, math.pi])
+    # plt.plot(np.linspace(0,N,N + 1),state_ref[2,:],'r--')
+    # plt.plot(np.linspace(0,N,N + 1),xpred[2,:],'g:')
+    # plt.axis([0, N, -7, 7])
+    plt.plot(np.linspace(0,N,N + 1),np.remainder(state_ref[2,:] + math.pi,2 * math.pi) - math.pi,'r--')
+    plt.plot(np.linspace(0,N,N + 1),np.remainder(xpred[2,:] + math.pi,2 * math.pi) - math.pi,'g:')
+    plt.axis([0, N, -3.5, 3.5])
     plt.ylabel("$\\theta$")
     plt.xlabel("$k$")
 
@@ -419,7 +532,7 @@ for i in range(Nsim):
     plt.cla()
     plt.plot(np.linspace(0,N - 1,N),input_ref[1,:],'r--')
     plt.plot(np.linspace(0,N - 1,N),upred[1,:],'g:')
-    plt.axis([0, N - 1, -math.pi, math.pi])
+    plt.axis([0, N - 1, -8, 8])
     plt.ylabel("$\\omega$")
     plt.xlabel("$k$")
 
