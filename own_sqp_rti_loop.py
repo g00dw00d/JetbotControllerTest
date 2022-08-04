@@ -33,6 +33,7 @@
 
 
 
+from statistics import mode
 import sys
 from tracemalloc import take_snapshot
 
@@ -126,111 +127,215 @@ def get_reference_circle(t,Ts,N):
     input_ref = np.vstack((v_ref.reshape(1,N), omega_ref.reshape(1,N)))
     return state_ref, input_ref
 
-def get_reference_pointsintersection(p0,t,Ts,N):
-    p_seq = np.zeros((2,4))
-    p_seq[0,0] = np.array([0.5])
-    p_seq[1,0] = np.array([0.5])
-    p_seq[0,1] = np.array([-0.5])
-    p_seq[1,1] = np.array([0.5])
-    p_seq[0,2] = np.array([-0.5])
-    p_seq[1,2] = np.array([-0.5])
-    p_seq[0,3] = np.array([0.5])
-    p_seq[1,3] = np.array([-0.5])
+# def get_reference_pointsintersection(p0,t,Ts,N):
+#     p_seq = np.zeros((2,4))
+#     p_seq[0,0] = np.array([0.5])
+#     p_seq[1,0] = np.array([0.5])
+#     p_seq[0,1] = np.array([-0.5])
+#     p_seq[1,1] = np.array([0.5])
+#     p_seq[0,2] = np.array([-0.5])
+#     p_seq[1,2] = np.array([-0.5])
+#     p_seq[0,3] = np.array([0.5])
+#     p_seq[1,3] = np.array([-0.5])
 
-    speed = 0.2
+#     speed = 0.2
 
-    t_vec = t + np.linspace(0,N * Ts, N + 1)
+#     t_vec = t + np.lindef get_reference_pointsintersection(p0,t,Ts,N):
+#     p_seq = np.zeros((2,4))
+#     p_seq[0,0] = np.array([0.5])
+#     p_seq[1,0] = np.array([0.5])
+#     p_seq[0,1] = np.array([-0.5])
+#     p_seq[1,1] = np.array([0.5])
+#     p_seq[0,2] = np.array([-0.5])
+#     p_seq[1,2] = np.array([-0.5])
+#     p_seq[0,3] = np.array([0.5])
+#     p_seq[1,3] = np.array([-0.5])
 
-    x_pos_ref = 0.5 * np.ones(N + 1)
-    y_pos_ref = np.zeros(N  + 1)
-    # theta_ref = (np.arctan2(np.sin(math.pi / 2 - p0[2]),np.cos(math.pi / 2 - p0[2])) + p0[2]) * np.ones(N + 1)
-    theta_ref = math.pi / 2 * np.ones(N + 1)
-    v_ref = np.zeros(N)
-    omega_ref = np.zeros(N)
+#     speed = 0.2
+
+#     t_vec = t + np.linspace(0,N * Ts, N + 1)
+
+#     x_pos_ref = 0.5 * np.ones(N + 1)
+#     y_pos_ref = np.zeros(N  + 1)
+#     # theta_ref = (np.arctan2(np.sin(math.pi / 2 - p0[2]),np.cos(math.pi / 2 - p0[2])) + p0[2]) * np.ones(N + 1)
+#     theta_ref = math.pi / 2 * np.ones(N + 1)
+#     v_ref = np.zeros(N)
+#     omega_ref = np.zeros(N)
     
-    if (t_vec[0] < 0.5 / speed):
-        v_ref[0] = speed
-        omega_ref[0]  = 0.0
-        # theta_ref[0]  = np.arctan2(np.sin(math.pi / 2 - p0[2]),np.cos(math.pi / 2 - p0[2])) + p0[2]
-        theta_ref[0]  = math.pi / 2
-        x_pos_ref[0]  = 0.5
-        y_pos_ref[0]  = t_vec[0] * speed
-    if ((t_vec[0] >= 0.5 / speed) and (t_vec[0] < 1.5 / speed)):
-        v_ref[0]  = speed
-        omega_ref[0]  = 0.0
-        # theta_ref[0]  = np.arctan2(np.sin(math.pi - p0[2]),np.cos(math.pi - p0[2])) + p0[2]
-        theta_ref[0]  = math.pi
-        x_pos_ref[0]  = 0.5 - (t_vec[0] - 0.5 / speed) * speed 
-        y_pos_ref[0]  = 0.5
-    if ((t_vec[0] >= 1.5 / speed) and (t_vec[0] < 2.5 / speed)):
-        v_ref[0]  = speed
-        omega_ref[0]  = 0.0        # theta_ref[0]  = np.arctan2(np.sin(-math.pi / 2 - p0[2]),np.cos(-math.pi / 2 - p0[2])) + p0[2]
+#     if (t_vec[0] < 0.5 / speed):
+#         v_ref[0] = speed
+#         omega_ref[0]  = 0.0
+#         # theta_ref[0]  = np.arctan2(np.sin(math.pi / 2 - p0[2]),np.cos(math.pi / 2 - p0[2])) + p0[2]
+#         theta_ref[0]  = math.pi / 2
+#         x_pos_ref[0]  = 0.5
+#         y_pos_ref[0]  = t_vec[0] * speed
+#     if ((t_vec[0] >= 0.5 / speed) and (t_vec[0] < 1.5 / speed)):
+#         v_ref[0]  = speed
+#         omega_ref[0]  = 0.0
+#         # theta_ref[0]  = np.arctan2(np.sin(math.pi - p0[2]),np.cos(math.pi - p0[2])) + p0[2]
+#         theta_ref[0]  = math.pi
+#         x_pos_ref[0]  = 0.5 - (t_vec[0] - 0.5 / speed) * speed 
+#         y_pos_ref[0]  = 0.5
+#     if ((t_vec[0] >= 1.5 / speed) and (t_vec[0] < 2.5 / speed)):
+#         v_ref[0]  = speed
+#         omega_ref[0]  = 0.0        # theta_ref[0]  = np.arctan2(np.sin(-math.pi / 2 - p0[2]),np.cos(-math.pi / 2 - p0[2])) + p0[2]
 
-        # theta_ref[0]  = np.arctan2(np.sin(-math.pi / 2 - p0[2]),np.cos(-math.pi / 2 - p0[2])) + p0[2]
-        theta_ref[0]  = -math.pi / 2
-        x_pos_ref[0]  = -0.5
-        y_pos_ref[0]  = 0.5 - (t_vec[0] - 1.5 / speed) * speed
-    if ((t_vec[0] >= 2.5 / speed) and (t_vec[0] < 3.5 / speed)):
-        v_ref[0]  = speed
-        omega_ref[0] = 0.0
-        # theta_ref[0] = np.arctan2(np.sin(0.0 - p0[2]),np.cos(0.0 - p0[2])) + p0[2]
-        theta_ref[0] = 0.0 
-        x_pos_ref[0]  = -0.5 + (t_vec[0] - 2.5 / speed) * speed
-        y_pos_ref[0]  = -0.5
-    if ((t_vec[0] >= 3.5 / speed) and (t_vec[0] < 4.0 / speed)):
-        v_ref[0]  = speed 
-        omega_ref[0]  = 0.
-        # theta_ref[0]  = np.arctan2(np.sin(math.pi / 2 - p0[2]),np.cos(math.pi / 2 - p0[2])) + p0[2]
-        theta_ref[0]  = math.pi / 2
-        x_pos_ref[0]  =  0.5
-        y_pos_ref[0]  = -0.5 + (t_vec[0] - 3.5 / speed) * speed
+#         # theta_ref[0]  = np.arctan2(np.sin(-math.pi / 2 - p0[2]),np.cos(-math.pi / 2 - p0[2])) + p0[2]
+#         theta_ref[0]  = -math.pi / 2
+#         x_pos_ref[0]  = -0.5
+#         y_pos_ref[0]  = 0.5 - (t_vec[0] - 1.5 / speed) * speed
+#     if ((t_vec[0] >= 2.5 / speed) and (t_vec[0] < 3.5 / speed)):
+#         v_ref[0]  = speed
+#         omega_ref[0] = 0.0
+#         # theta_ref[0] = np.arctan2(np.sin(0.0 - p0[2]),np.cos(0.0 - p0[2])) + p0[2]
+#         theta_ref[0] = 0.0 
+#         x_pos_ref[0]  = -0.5 + (t_vec[0] - 2.5 / speed) * speed
+#         y_pos_ref[0]  = -0.5
+#     if ((t_vec[0] >= 3.5 / speed) and (t_vec[0] < 4.0 / speed)):
+#         v_ref[0]  = speed 
+#         omega_ref[0]  = 0.
+#         # theta_ref[0]  = np.arctan2(np.sin(math.pi / 2 - p0[2]),np.cos(math.pi / 2 - p0[2])) + p0[2]
+#         theta_ref[0]  = math.pi / 2
+#         x_pos_ref[0]  =  0.5
+#         y_pos_ref[0]  = -0.5 + (t_vec[0] - 3.5 / speed) * speed
 
-    for kp in range(N):
-        k = 1 + kp
-        if (t_vec[k] < 0.5 / speed):
-            if k < N:
-                v_ref[k] = speed
-                omega_ref[k]  = 0.0
-            # theta_ref[k]  = np.arctan2(np.sin(math.pi / 2 - theta_ref[kp]),np.cos(math.pi / 2 - theta_ref[kp])) + theta_ref[kp]
-            theta_ref[k]  = math.pi / 2
-            x_pos_ref[k]  = 0.5
-            y_pos_ref[k]  = t_vec[k] * speed
-        if ((t_vec[k] >= 0.5 / speed) and (t_vec[k] < 1.5 / speed)):
-            if k < N:
-                v_ref[k]  = speed
-                omega_ref[k]  = 0.0
-            # theta_ref[k]  = np.arctan2(np.sin(math.pi - theta_ref[kp]),np.cos(math.pi - theta_ref[kp])) + theta_ref[kp]
-            theta_ref[k]  = math.pi
-            x_pos_ref[k]  = 0.5 - (t_vec[k] - 0.5 / speed) * speed 
-            y_pos_ref[k]  = 0.5
-        if ((t_vec[k] >= 1.5 / speed) and (t_vec[k] < 2.5 / speed)):
-            if k < N:
-                v_ref[k]  = speed
-                omega_ref[k]  = 0.0
-            # theta_ref[k]  = np.arctan2(np.sin(-math.pi / 2 - theta_ref[kp]),np.cos(-math.pi / 2 - theta_ref[kp])) + theta_ref[kp]
-            theta_ref[k]  = -math.pi / 2
-            x_pos_ref[k]  = -0.5
-            y_pos_ref[k]  = 0.5 - (t_vec[k] - 1.5 / speed) * speed
-        if ((t_vec[k] >= 2.5 / speed) and (t_vec[k] < 3.5 / speed)):
-            if k < N:
-                v_ref[k]  = speed
-                omega_ref[k] = 0.0
-            # theta_ref[k] = np.arctan2(np.sin(0theta_ref[k] = np.arctan2(np.sin(0.0.0 - theta_ref[kp]),np.cos(0.0 - theta_ref[kp])) + theta_ref[kp]
-            theta_ref[k] = 0.0
-            x_pos_ref[k]  = -0.5 + (t_vec[k] - 2.5 / speed) * speed
-            y_pos_ref[k]  = -0.5
-        if ((t_vec[k] >= 3.5 / speed) and (t_vec[k] < 4.0 / speed)):
-            if k < N:
-                v_ref[k]  = speed 
-                omega_ref[k]  = 0.
-            # theta_ref[k]  = np.arctan2(np.sin(math.pi / 2 - theta_ref[kp]),np.cos(math.pi / 2 - theta_ref[kp])) + theta_ref[kp]
-            theta_ref[k]  = math.pi / 2
-            x_pos_ref[k]  = 0.5
-            y_pos_ref[k]  = -0.5 + (t_vec[k] - 3.5 / speed) * speed
+#     for kp in range(N):
+#         k = 1 + kp
+#         if (t_vec[k] < 0.5 / speed):
+#             if k < N:
+#                 v_ref[k] = speed
+#                 omega_ref[k]  = 0.0
+#             # theta_ref[k]  = np.arctan2(np.sin(math.pi / 2 - theta_ref[kp]),np.cos(math.pi / 2 - theta_ref[kp])) + theta_ref[kp]
+#             theta_ref[k]  = math.pi / 2
+#             x_pos_ref[k]  = 0.5
+#             y_pos_ref[k]  = t_vec[k] * speed
+#         if ((t_vec[k] >= 0.5 / speed) and (t_vec[k] < 1.5 / speed)):
+#             if k < N:
+#                 v_ref[k]  = speed
+#                 omega_ref[k]  = 0.0
+#             # theta_ref[k]  = np.arctan2(np.sin(math.pi - theta_ref[kp]),np.cos(math.pi - theta_ref[kp])) + theta_ref[kp]
+#             theta_ref[k]  = math.pi
+#             x_pos_ref[k]  = 0.5 - (t_vec[k] - 0.5 / speed) * speed 
+#             y_pos_ref[k]  = 0.5
+#         if ((t_vec[k] >= 1.5 / speed) and (t_vec[k] < 2.5 / speed)):
+#             if k < N:
+#                 v_ref[k]  = speed
+#                 omega_ref[k]  = 0.0
+#             # theta_ref[k]  = np.arctan2(np.sin(-math.pi / 2 - theta_ref[kp]),np.cos(-math.pi / 2 - theta_ref[kp])) + theta_ref[kp]
+#             theta_ref[k]  = -math.pi / 2
+#             x_pos_ref[k]  = -0.5
+#             y_pos_ref[k]  = 0.5 - (t_vec[k] - 1.5 / speed) * speed
+#         if ((t_vec[k] >= 2.5 / speed) and (t_vec[k] < 3.5 / speed)):
+#             if k < N:
+#                 v_ref[k]  = speed
+#                 omega_ref[k] = 0.0
+#             # theta_ref[k] = np.arctan2(np.sin(0theta_ref[k] = np.arctan2(np.sin(0.0.0 - theta_ref[kp]),np.cos(0.0 - theta_ref[kp])) + theta_ref[kp]
+#             theta_ref[k] = 0.0
+#             x_pos_ref[k]  = -0.5 + (t_vec[k] - 2.5 / speed) * speed
+#             y_pos_ref[k]  = -0.5
+#         if ((t_vec[k] >= 3.5 / speed) and (t_vec[k] < 4.0 / speed)):
+#             if k < N:
+#                 v_ref[k]  = speed 
+#                 omega_ref[k]  = 0.
+#             # theta_ref[k]  = np.arctan2(np.sin(math.pi / 2 - theta_ref[kp]),np.cos(math.pi / 2 - theta_ref[kp])) + theta_ref[kp]
+#             theta_ref[k]  = math.pi / 2
+#             x_pos_ref[k]  = 0.5
+#             y_pos_ref[k]  = -0.5 + (t_vec[k] - 3.5 / speed) * speed
         
-    state_ref = np.vstack((x_pos_ref.reshape(1,N + 1), y_pos_ref.reshape(1,N + 1), theta_ref.reshape(1,N + 1)))
-    input_ref = np.vstack((v_ref.reshape(1,N), omega_ref.reshape(1,N)))
-    return state_ref, input_ref
+#     state_ref = np.vstack((x_pos_ref.reshape(1,N + 1), y_pos_ref.reshape(1,N + 1), theta_ref.reshape(1,N + 1)))
+#     input_ref = np.vstack((v_ref.reshape(1,N), omega_ref.reshape(1,N)))
+#     return state_ref, input_refspace(0,N * Ts, N + 1)
+
+#     x_pos_ref = 0.5 * np.ones(N + 1)
+#     y_pos_ref = np.zeros(N  + 1)
+#     # theta_ref = (np.arctan2(np.sin(math.pi / 2 - p0[2]),np.cos(math.pi / 2 - p0[2])) + p0[2]) * np.ones(N + 1)
+#     theta_ref = math.pi / 2 * np.ones(N + 1)
+#     v_ref = np.zeros(N)
+#     omega_ref = np.zeros(N)
+    
+#     if (t_vec[0] < 0.5 / speed):
+#         v_ref[0] = speed
+#         omega_ref[0]  = 0.0
+#         # theta_ref[0]  = np.arctan2(np.sin(math.pi / 2 - p0[2]),np.cos(math.pi / 2 - p0[2])) + p0[2]
+#         theta_ref[0]  = math.pi / 2
+#         x_pos_ref[0]  = 0.5
+#         y_pos_ref[0]  = t_vec[0] * speed
+#     if ((t_vec[0] >= 0.5 / speed) and (t_vec[0] < 1.5 / speed)):
+#         v_ref[0]  = speed
+#         omega_ref[0]  = 0.0
+#         # theta_ref[0]  = np.arctan2(np.sin(math.pi - p0[2]),np.cos(math.pi - p0[2])) + p0[2]
+#         theta_ref[0]  = math.pi
+#         x_pos_ref[0]  = 0.5 - (t_vec[0] - 0.5 / speed) * speed 
+#         y_pos_ref[0]  = 0.5
+#     if ((t_vec[0] >= 1.5 / speed) and (t_vec[0] < 2.5 / speed)):
+#         v_ref[0]  = speed
+#         omega_ref[0]  = 0.0        # theta_ref[0]  = np.arctan2(np.sin(-math.pi / 2 - p0[2]),np.cos(-math.pi / 2 - p0[2])) + p0[2]
+
+#         # theta_ref[0]  = np.arctan2(np.sin(-math.pi / 2 - p0[2]),np.cos(-math.pi / 2 - p0[2])) + p0[2]
+#         theta_ref[0]  = -math.pi / 2
+#         x_pos_ref[0]  = -0.5
+#         y_pos_ref[0]  = 0.5 - (t_vec[0] - 1.5 / speed) * speed
+#     if ((t_vec[0] >= 2.5 / speed) and (t_vec[0] < 3.5 / speed)):
+#         v_ref[0]  = speed
+#         omega_ref[0] = 0.0
+#         # theta_ref[0] = np.arctan2(np.sin(0.0 - p0[2]),np.cos(0.0 - p0[2])) + p0[2]
+#         theta_ref[0] = 0.0 
+#         x_pos_ref[0]  = -0.5 + (t_vec[0] - 2.5 / speed) * speed
+#         y_pos_ref[0]  = -0.5
+#     if ((t_vec[0] >= 3.5 / speed) and (t_vec[0] < 4.0 / speed)):
+#         v_ref[0]  = speed 
+#         omega_ref[0]  = 0.
+#         # theta_ref[0]  = np.arctan2(np.sin(math.pi / 2 - p0[2]),np.cos(math.pi / 2 - p0[2])) + p0[2]
+#         theta_ref[0]  = math.pi / 2
+#         x_pos_ref[0]  =  0.5
+#         y_pos_ref[0]  = -0.5 + (t_vec[0] - 3.5 / speed) * speed
+
+#     for kp in range(N):
+#         k = 1 + kp
+#         if (t_vec[k] < 0.5 / speed):
+#             if k < N:
+#                 v_ref[k] = speed
+#                 omega_ref[k]  = 0.0
+#             # theta_ref[k]  = np.arctan2(np.sin(math.pi / 2 - theta_ref[kp]),np.cos(math.pi / 2 - theta_ref[kp])) + theta_ref[kp]
+#             theta_ref[k]  = math.pi / 2
+#             x_pos_ref[k]  = 0.5
+#             y_pos_ref[k]  = t_vec[k] * speed
+#         if ((t_vec[k] >= 0.5 / speed) and (t_vec[k] < 1.5 / speed)):
+#             if k < N:
+#                 v_ref[k]  = speed
+#                 omega_ref[k]  = 0.0
+#             # theta_ref[k]  = np.arctan2(np.sin(math.pi - theta_ref[kp]),np.cos(math.pi - theta_ref[kp])) + theta_ref[kp]
+#             theta_ref[k]  = math.pi
+#             x_pos_ref[k]  = 0.5 - (t_vec[k] - 0.5 / speed) * speed 
+#             y_pos_ref[k]  = 0.5
+#         if ((t_vec[k] >= 1.5 / speed) and (t_vec[k] < 2.5 / speed)):
+#             if k < N:
+#                 v_ref[k]  = speed
+#                 omega_ref[k]  = 0.0
+#             # theta_ref[k]  = np.arctan2(np.sin(-math.pi / 2 - theta_ref[kp]),np.cos(-math.pi / 2 - theta_ref[kp])) + theta_ref[kp]
+#             theta_ref[k]  = -math.pi / 2
+#             x_pos_ref[k]  = -0.5
+#             y_pos_ref[k]  = 0.5 - (t_vec[k] - 1.5 / speed) * speed
+#         if ((t_vec[k] >= 2.5 / speed) and (t_vec[k] < 3.5 / speed)):
+#             if k < N:
+#                 v_ref[k]  = speed
+#                 omega_ref[k] = 0.0
+#             # theta_ref[k] = np.arctan2(np.sin(0theta_ref[k] = np.arctan2(np.sin(0.0.0 - theta_ref[kp]),np.cos(0.0 - theta_ref[kp])) + theta_ref[kp]
+#             theta_ref[k] = 0.0
+#             x_pos_ref[k]  = -0.5 + (t_vec[k] - 2.5 / speed) * speed
+#             y_pos_ref[k]  = -0.5
+#         if ((t_vec[k] >= 3.5 / speed) and (t_vec[k] < 4.0 / speed)):
+#             if k < N:
+#                 v_ref[k]  = speed 
+#                 omega_ref[k]  = 0.
+#             # theta_ref[k]  = np.arctan2(np.sin(math.pi / 2 - theta_ref[kp]),np.cos(math.pi / 2 - theta_ref[kp])) + theta_ref[kp]
+#             theta_ref[k]  = math.pi / 2
+#             x_pos_ref[k]  = 0.5
+#             y_pos_ref[k]  = -0.5 + (t_vec[k] - 3.5 / speed) * speed
+        
+#     state_ref = np.vstack((x_pos_ref.reshape(1,N + 1), y_pos_ref.reshape(1,N + 1), theta_ref.reshape(1,N + 1)))
+#     input_ref = np.vstack((v_ref.reshape(1,N), omega_ref.reshape(1,N)))
+#     return state_ref, input_ref
 
 def create_tajectory_randpoints(points):
     poses = []
@@ -243,18 +348,40 @@ def create_tajectory_randpoints(points):
     return poses
 
 def add_time_to_wayposes(poses,t0,desired_speed,mode = 'ignore_corners'):
+    LargeTime = 1000
+    
     W = len(poses)
     timed_poses = np.zeros((4,W))
     if mode == 'ignore_corners':
         for i in range(W):
             timed_poses[0,i] = poses[i].x
             timed_poses[1,i] = poses[i].y
-            timed_poses[2,i] = poses[i].theta
+            # timed_poses[2,i] = poses[i].theta
             if i > 0:
-                timed_poses[2,i] = np.arctan2(np.sin(poses[i].y - poses[i - 1].y), np.cos(poses[i].x - poses[i - 1].x))
+                timed_poses[2,i] = np.arctan2(poses[i].y - poses[i - 1].y, poses[i].x - poses[i - 1].x)
                 timed_poses[3,i] = timed_poses[3,i - 1] + 1 / desired_speed * np.sqrt((poses[i].y - poses[i - 1].y) ** 2 + (poses[i].x - poses[i - 1].x) ** 2)
             else:
+                timed_poses[2,i] = 0
                 timed_poses[3,i] = t0
+    if mode == 'stop_in_corners':
+        timed_poses = np.zeros((4,2 * W))
+        for i in range(W):
+            timed_poses[0,i * 2] = poses[i].x
+            timed_poses[1,i * 2] = poses[i].y
+            if i > 0:
+                timed_poses[2,i  * 2] = np.arctan2(poses[i].y - poses[i - 1].y, poses[i].x - poses[i - 1].x)
+                timed_poses[3,i * 2] = timed_poses[3,i * 2 - 1] + 1 / desired_speed * np.sqrt((poses[i].y - poses[i - 1].y) ** 2 + (poses[i].x - poses[i - 1].x) ** 2)
+            else:
+                timed_poses[2,0] = poses[0].theta
+                timed_poses[3,0] = t0
+            timed_poses[0,i  * 2 + 1] = poses[i].x
+            timed_poses[1,i * 2 + 1] = poses[i].y
+            if i < W - 1:
+                timed_poses[2,i  * 2 + 1] = np.arctan2(poses[i + 1].y - poses[i].y, poses[i + 1].x - poses[i].x)
+                timed_poses[3,i  * 2 + 1] = timed_poses[3,i * 2] + 5 * 0.11 / (2 * desired_speed) * np.absolute(np.arctan2(np.sin(timed_poses[2,i  * 2 + 1] - timed_poses[2,i  * 2 ]),np.cos(timed_poses[2,i  * 2 + 1] - timed_poses[2,i  * 2 ])))
+            else:
+                timed_poses[2,i  * 2 + 1] = timed_poses[2,i  * 2]
+                timed_poses[3,i  * 2 + 1] = LargeTime             
     return timed_poses
 
 def generate_reference_trajectory_from_timed_wayposes(timed_poses,t,Ts,N,mode = 'ignore_corners'):
@@ -263,6 +390,7 @@ def generate_reference_trajectory_from_timed_wayposes(timed_poses,t,Ts,N,mode = 
     theta_ref = np.zeros(N + 1)
     v_ref = np.zeros(N + 1)
     omega_ref = np.zeros(N + 1)
+    
     if mode == 'ignore_corners':
         t_vec = t + np.linspace(0,N * Ts, N + 1)
         for k in range(N + 1):
@@ -276,16 +404,47 @@ def generate_reference_trajectory_from_timed_wayposes(timed_poses,t,Ts,N,mode = 
                     l = (t_vec[k] - timed_poses[3,idx_k - 1]) / (timed_poses[3,idx_k] - timed_poses[3,idx_k - 1])
                     x_pos_ref[k] = l * timed_poses[0,idx_k] + (1 - l) * timed_poses[0,idx_k - 1]
                     y_pos_ref[k] = l * timed_poses[1,idx_k] + (1 - l) * timed_poses[1,idx_k - 1]
+    
+    if mode == 'stop_in_corners':
+        t_vec = t + np.linspace(0,N * Ts, N + 1)
+        for k in range(N + 1):
+            waypose_times = timed_poses[3,:]
+            idx_poses_after_t = np.argwhere(waypose_times > t_vec[k])
+            if idx_poses_after_t.size > 0:
+                idx_k = idx_poses_after_t[0]
+                if idx_k > 0:
+                    v_ref[k] = np.sqrt((timed_poses[1,idx_k] - timed_poses[1,idx_k - 1]) ** 2 + (timed_poses[0,idx_k] - timed_poses[0,idx_k - 1]) ** 2) / (timed_poses[3,idx_k] - timed_poses[3,idx_k - 1])
+                    if np.remainder(idx_k,2) == 0:
+                        l = (t_vec[k] - timed_poses[3,idx_k - 1]) / (timed_poses[3,idx_k] - timed_poses[3,idx_k - 1])
+                        theta_ref[k] = np.arctan2(timed_poses[1,idx_k] - timed_poses[1,idx_k - 1], timed_poses[0,idx_k] - timed_poses[0,idx_k - 1])
+                        x_pos_ref[k] = l * timed_poses[0,idx_k] + (1 - l) * timed_poses[0,idx_k - 1]
+                        y_pos_ref[k] = l * timed_poses[1,idx_k] + (1 - l) * timed_poses[1,idx_k - 1]
+                    else:
+                        x_pos_ref[k] = timed_poses[0,idx_k - 1]
+                        y_pos_ref[k] = timed_poses[1,idx_k - 1]
+                        l_rot = (t_vec[k] - timed_poses[3,idx_k - 1]) / (timed_poses[3,idx_k] - timed_poses[3,idx_k - 1])
+                        # print(l_rot)
+                        theta_ref[k]  = timed_poses[2,idx_k - 1] + l_rot *  np.arctan2(np.sin(timed_poses[2,idx_k] - timed_poses[2,idx_k - 1]),np.cos(timed_poses[2,idx_k] - timed_poses[2,idx_k - 1]))
+                        omega_ref[k] = np.arctan2(np.sin(timed_poses[2,idx_k] - timed_poses[2,idx_k - 1]),np.cos(timed_poses[2,idx_k] - timed_poses[2,idx_k - 1])) / (timed_poses[3,idx_k] - timed_poses[3,idx_k - 1])
+                else:
+                    v_ref[k] = np.sqrt((timed_poses[1,idx_k] - timed_poses[1,idx_k - 1]) ** 2 + (timed_poses[0,idx_k] - timed_poses[0,idx_k - 1]) ** 2) / (timed_poses[3,idx_k] - timed_poses[3,idx_k - 1])
+
     state_ref = np.vstack((x_pos_ref.reshape(1,N + 1), y_pos_ref.reshape(1,N + 1), theta_ref.reshape(1,N + 1)))
     input_ref = np.vstack((v_ref[:-1].reshape(1,N), omega_ref[:-1].reshape(1,N)))
     return state_ref, input_ref
 
-points = [[0.,0.],[-1.352, -0.840], [-0.088,1.409],[1.306,-0.948],[0.869,2.150],[-1.155,2.208],[-0.067,-1.547],[0.,0.4],[0.3,0.],[0.,0.]]
-speed_des = 0.2
+x0 = 1 * np.random.randn(3)
+points = [x0[:2].tolist(),[0.,0.],[-1.352, -0.840], [-0.088,1.409],[1.306,-0.948],[0.869,2.150],[-1.155,2.208],[-0.067,-1.547],[0.,0.4],[0.3,0.],[0.,0.]]
+speed_des = 0.25
+
+# mode = 'ignore_corners'
+mode = 'stop_in_corners' #buggy
+
 wayposes = create_tajectory_randpoints(points)
-timed_poses = add_time_to_wayposes(wayposes,0,speed_des)
+wayposes[0].theta = x0[2]
+timed_poses = add_time_to_wayposes(wayposes,0,speed_des,mode)
 print(timed_poses)
-[state_plot, input_plot] = generate_reference_trajectory_from_timed_wayposes(timed_poses,0,0.1,950)
+[state_plot, input_plot] = generate_reference_trajectory_from_timed_wayposes(timed_poses,0,0.01,12000,mode)
 # [state_plot, input_plot] = get_reference_circle(0,0.1,200)
 # [state_plot, input_plot] = get_reference_pointsintersection(x0,0,0.1,200)
 
@@ -296,9 +455,15 @@ plt.ylabel("$y$")
 plt.axis('square')
 plt.show()
 
+plt.figure()
+plt.plot(np.linspace(0,12000,12001),np.remainder(state_plot[2,:] + math.pi,2 * math.pi) - math.pi,'k')
+plt.xlabel("$k$")
+plt.ylabel("$\\theta$")
+plt.axis([0,11999,-4,4])
+plt.show()
 
 t_sim = 0
-x0 = state_plot[:3,0] + 0.2 * np.random.randn(3)
+
 
 
 # parameters for imput constraints 
@@ -339,7 +504,7 @@ ocp.dims.N = N
 Q = np.diag([1.0, 1.0, 0.1])
 R = np.diag([0.001, 0.001])
 
-W_e = 10 * Q
+W_e = N * Q
 W = scipy.linalg.block_diag(Q, R)
 ocp.cost.W_e = W_e
 ocp.cost.W = W
@@ -424,15 +589,17 @@ ocp.solver_options.tf = Tf
 
 ocp_solver = AcadosOcpSolver(ocp, json_file = 'acados_ocp.json')
 
-Nsim = 20 *  N
+xnext = x0
+t_sim = 0.0
+Ts = Tf / N
 
+Nsim = math.ceil(timed_poses[3,-2] / Ts) + N
+print(Nsim)
 simX = np.ndarray((nx, Nsim + 1))
 simU = np.ndarray((nu, Nsim))
 simT = np.ndarray((1, Nsim + 1))
 
-xnext = x0
-t_sim = 0.0
-Ts = Tf / N
+
 
 
 simT[0,0] = t_sim
@@ -455,7 +622,7 @@ for i in range(Nsim):
     # reference
     # [state_ref, input_ref] = get_reference_pointsintersection(xnext,t_sim, Ts, N)
     # [state_ref, input_ref] = get_reference_circle(t_sim, Ts, N)
-    [state_ref, input_ref] = generate_reference_trajectory_from_timed_wayposes(timed_poses,t_sim,Ts,N)
+    [state_ref, input_ref] = generate_reference_trajectory_from_timed_wayposes(timed_poses,t_sim,Ts,N,mode)
 
 
     for k in range(N):
@@ -508,7 +675,7 @@ for i in range(Nsim):
     plt.ylabel("$y$")
     plt.axis('square')
     # plt.show()
-    plt.pause(Ts)
+    plt.pause(Ts/100)
 
     plt.figure(2)
     plt.subplot(321)
@@ -556,11 +723,11 @@ for i in range(Nsim):
     plt.xlabel("$k$")
 
     # plt.show()
-    plt.pause(Ts / 4)
+    plt.pause(Ts / 100)
 
 
     # get next state
-    xnext = ocp_solver.get(1, "x") + 0.001 * np.random.randn(3)
+    xnext = ocp_solver.get(1, "x") + 0.005 * np.random.randn(3)
     # print(xnext)
     t_sim += Ts
 
