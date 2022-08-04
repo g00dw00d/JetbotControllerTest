@@ -381,7 +381,7 @@ def add_time_to_wayposes(poses,t0,desired_speed,mode = 'ignore_corners'):
                 timed_poses[3,i  * 2 + 1] = timed_poses[3,i * 2] + 5 * 0.11 / (2 * desired_speed) * np.absolute(np.arctan2(np.sin(timed_poses[2,i  * 2 + 1] - timed_poses[2,i  * 2 ]),np.cos(timed_poses[2,i  * 2 + 1] - timed_poses[2,i  * 2 ])))
             else:
                 timed_poses[2,i  * 2 + 1] = timed_poses[2,i  * 2]
-                timed_poses[3,i  * 2 + 1] = LargeTime             
+                timed_poses[3,i  * 2 + 1] = t0 + LargeTime             
     return timed_poses
 
 def generate_reference_trajectory_from_timed_wayposes(timed_poses,t,Ts,N,mode = 'ignore_corners'):
@@ -488,14 +488,14 @@ ocp.constraints.x0 = x0
 model = export_unicycle_ode_model_with_LocalConstraints()
 ocp.model = model
 
-Tf = 4.0
+Tf = 2.0
 nx = model.x.size()[0]
 nu = model.u.size()[0]
 nparam = model.p.size()[0]
 ny = nx + nu
 ny_e = nx
 nsh = 1
-N = 40
+N = 20
 
 # set dimensions
 ocp.dims.N = N
