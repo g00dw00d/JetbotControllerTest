@@ -434,7 +434,7 @@ def generate_reference_trajectory_from_timed_wayposes(timed_poses,t,Ts,N,mode = 
     return state_ref, input_ref
 
 x0 = 1 * np.random.randn(3)
-points = [x0[:2].tolist(),[0.,0.],[-1.352, -0.840], [-0.088,1.409],[1.306,-0.948],[0.869,2.150],[-1.155,2.208],[-0.067,-1.547],[0.,0.4],[0.3,0.],[0.,0.]]
+points = [x0[:2].tolist(),[0.,0.],[-1.352, -0.840], [-0.088,1.409],[1.306,-0.948],[0.869,2.150],[-1.155,2.208],[-0.067,-1.547],[0.,-0.4],[0.3,0.],[0.,0.]]
 speed_des = 0.25
 
 # mode = 'ignore_corners'
@@ -502,7 +502,7 @@ ocp.dims.N = N
 
 # set cost
 Q = np.diag([1.0, 1.0, 0.1])
-R = np.diag([0.001, 0.001])
+R = np.diag([0.2, 0.1])
 
 W_e = N * Q
 W = scipy.linalg.block_diag(Q, R)
@@ -589,11 +589,13 @@ ocp.solver_options.tf = Tf
 
 ocp_solver = AcadosOcpSolver(ocp, json_file = 'acados_ocp.json')
 
+print(ocp.model)
+
 xnext = x0
 t_sim = 0.0
 Ts = Tf / N
 
-Nsim = math.ceil(timed_poses[3,-2] / Ts) + N
+Nsim = 10#math.ceil(timed_poses[3,-2] / Ts) + N
 print(Nsim)
 simX = np.ndarray((nx, Nsim + 1))
 simU = np.ndarray((nu, Nsim))
