@@ -52,6 +52,7 @@ import matplotlib.pyplot as plt
 
 from acados_template import AcadosModel
 from casadi import SX, vertcat, sin, cos, Function
+from sklearn.ensemble import RandomTreesEmbedding
 
 class Pose2D:
     x = np.array([0.]) 
@@ -379,10 +380,57 @@ def add_time_to_wayposes(poses,t0,desired_speed,mode = 'ignore_corners'):
             timed_poses[1,i * 2 + 1] = poses[i].y
             if i < W - 1:
                 timed_poses[2,i  * 2 + 1] = np.arctan2(poses[i + 1].y - poses[i].y, poses[i + 1].x - poses[i].x)
-                timed_poses[3,i  * 2 + 1] = timed_poses[3,i * 2] + 5 * 0.11 / (2 * desired_speed) * np.absolute(np.arctan2(np.sin(timed_poses[2,i  * 2 + 1] - timed_poses[2,i  * 2 ]),np.cos(timed_poses[2,i  * 2 + 1] - timed_poses[2,i  * 2 ])))
+                timed_poses[3,i  * 2 + 1] = timed_poses[3,i * 2] + 2 * 0.11 / (2 * desired_speed) * np.absolute(np.arctan2(np.sin(timed_poses[2,i  * 2 + 1] - timed_poses[2,i  * 2 ]),np.cos(timed_poses[2,i  * 2 + 1] - timed_poses[2,i  * 2 ])))
             else:
                 timed_poses[2,i  * 2 + 1] = timed_poses[2,i  * 2]
-                timed_poses[3,i  * 2 + 1] = t0 + LargeTime             
+                timed_poses[3,i  * 2 + 1] = t0 + LargeTime     
+       
+    return timed_poses
+
+def add_syncronised_waypose(current_timed_poses,current_t,next_waypoint,next_travel_duration):
+    timed_poses = np.zeros((4,1))
+    timed_poses[0,0] = next_waypoint[0]
+    timed_poses[1,0] = next_waypoint[1]
+    timed_poses[2,0] = 0.
+    timed_poses[3,0] = current_t 
+    # print(current_timed_poses)
+    # print(np.any(current_timed_poses))
+    if np.any(current_timed_poses):
+        current_waypose_times = current_timed_poses[3,:]
+        idx_poses_after_t = np.argwhere(current_waypose_times > current_t)
+        if idx_poses_after_t.size > 0:
+            idx_next = idx_poses_after_t[0]
+            if idx_next > 1: #if there are more than one waypoint in list that have been passed
+                reduced_timed_posed = current_timed_poses[:,idx_next - 1:]
+            else:
+                reduced_timed_posed = current_timed_poses
+        else:
+            reduced_timed_posed = current_timed_poses
+
+        reduced_times = reduced_timed_posed[3,:]
+        W = len(reduced_times)    
+
+        # print(W)
+        rounds = 3
+
+        timed_poses = np.zeros((4,W + 2 + rounds * 4))
+        timed_poses[:,:W] = reduced_timed_posed
+        timed_poses[0,W] = reduced_timed_posed[0,-1]
+        timed_poses[1,W] = reduced_timed_posed[1,-1]
+        timed_poses[2,W] = np.arctan2(next_waypoint[1] - reduced_timed_posed[1,-1], next_waypoint[0] - reduced_timed_posed[0,-1])
+        timed_poses[3,W] = reduced_timed_posed[3,-1] + 1
+        timed_poses[0,W + 1] = next_waypoint[0]
+        timed_poses[1,W + 1] = next_waypoint[1]
+        timed_poses[2,W + 1] = timed_poses[2,W]
+        timed_poses[3,W + 1] = timed_poses[3,W] + next_travel_duration
+        
+
+        dir = np.sign(np.random.randn(1))
+        for ts in range(rounds * 4):
+            timed_poses[0,W + 2 + ts] = next_waypoint[0]
+            timed_poses[1,W + 2 + ts] = next_waypoint[1]
+            timed_poses[2,W + 2 + ts] = np.remainder(timed_poses[2,W + 2 + ts - 1] + dir * math.pi / 2 + math.pi,2 * math.pi) - math.pi
+            timed_poses[3,W + 2 + ts] = timed_poses[3,W + 2 + ts - 1] + 0.5  
     return timed_poses
 
 def generate_reference_trajectory_from_timed_wayposes(timed_poses,t,Ts,N,mode = 'ignore_corners'):
@@ -430,22 +478,56 @@ def generate_reference_trajectory_from_timed_wayposes(timed_poses,t,Ts,N,mode = 
                 else:
                     v_ref[k] = np.sqrt((timed_poses[1,idx_k] - timed_poses[1,idx_k - 1]) ** 2 + (timed_poses[0,idx_k] - timed_poses[0,idx_k - 1]) ** 2) / (timed_poses[3,idx_k] - timed_poses[3,idx_k - 1])
 
+
+    if mode == 'go_straight_or_turn':
+        t_vec = t + np.linspace(0,N * Ts, N + 1)
+        for k in range(N + 1):
+            waypose_times = timed_poses[3,:]
+            idx_poses_after_t = np.argwhere(waypose_times > t_vec[k])
+            if idx_poses_after_t.size > 0:
+                idx_k = idx_poses_after_t[0]
+                if idx_k > 0:
+                    v_ref[k] = np.sqrt((timed_poses[1,idx_k] - timed_poses[1,idx_k - 1]) ** 2 + (timed_poses[0,idx_k] - timed_poses[0,idx_k - 1]) ** 2) / (timed_poses[3,idx_k] - timed_poses[3,idx_k - 1])
+                    if v_ref[k] != 0:
+                        l = (t_vec[k] - timed_poses[3,idx_k - 1]) / (timed_poses[3,idx_k] - timed_poses[3,idx_k - 1])
+                        theta_ref[k] = np.arctan2(timed_poses[1,idx_k] - timed_poses[1,idx_k - 1], timed_poses[0,idx_k] - timed_poses[0,idx_k - 1])
+                        x_pos_ref[k] = l * timed_poses[0,idx_k] + (1 - l) * timed_poses[0,idx_k - 1]
+                        y_pos_ref[k] = l * timed_poses[1,idx_k] + (1 - l) * timed_poses[1,idx_k - 1]
+                    else:
+                        x_pos_ref[k] = timed_poses[0,idx_k - 1]
+                        y_pos_ref[k] = timed_poses[1,idx_k - 1]
+                        l_rot = (t_vec[k] - timed_poses[3,idx_k - 1]) / (timed_poses[3,idx_k] - timed_poses[3,idx_k - 1])
+                        # print(l_rot)
+                        theta_ref[k]  = timed_poses[2,idx_k - 1] + l_rot *  np.arctan2(np.sin(timed_poses[2,idx_k] - timed_poses[2,idx_k - 1]),np.cos(timed_poses[2,idx_k] - timed_poses[2,idx_k - 1]))
+                        omega_ref[k] = np.arctan2(np.sin(timed_poses[2,idx_k] - timed_poses[2,idx_k - 1]),np.cos(timed_poses[2,idx_k] - timed_poses[2,idx_k - 1])) / (timed_poses[3,idx_k] - timed_poses[3,idx_k - 1])
+                else:
+                    v_ref[k] = np.sqrt((timed_poses[1,idx_k] - timed_poses[1,idx_k - 1]) ** 2 + (timed_poses[0,idx_k] - timed_poses[0,idx_k - 1]) ** 2) / (timed_poses[3,idx_k] - timed_poses[3,idx_k - 1])
+
+
     state_ref = np.vstack((x_pos_ref.reshape(1,N + 1), y_pos_ref.reshape(1,N + 1), theta_ref.reshape(1,N + 1)))
     input_ref = np.vstack((v_ref[:-1].reshape(1,N), omega_ref[:-1].reshape(1,N)))
     return state_ref, input_ref
 
 x0 = 1 * np.random.randn(3)
+print(x0)
 points = [x0[:2].tolist(),[0.,0.],[-1.352, -0.840], [-0.088,1.409],[1.306,-0.948],[0.869,2.150],[-1.155,2.208],[-0.067,-1.547],[0.,-0.4],[0.3,0.],[0.,0.]]
 speed_des = 0.25
 
-# mode = 'ignore_corners'
-mode = 'stop_in_corners' #buggy
+mode = 'ignore_corners'
+# mode = 'stop_in_corners'
 
 wayposes = create_tajectory_randpoints(points)
 wayposes[0].theta = x0[2]
 timed_poses = add_time_to_wayposes(wayposes,0,speed_des,mode)
+
+# timed_poses = np.array([x0[0], x0[1], x0[2], 0])
+timed_poses = []#np.empty((4,1))
+for p in points:
+    timed_poses = add_syncronised_waypose(timed_poses, 0., np.array([p[0],p[1]]), 20.)
 print(timed_poses)
-[state_plot, input_plot] = generate_reference_trajectory_from_timed_wayposes(timed_poses,0,0.01,12000,mode)
+
+plot_samples = math.ceil(timed_poses[3,-2] * 100) + 100
+[state_plot, input_plot] = generate_reference_trajectory_from_timed_wayposes(timed_poses,0,0.01,plot_samples,'go_straight_or_turn')
 # [state_plot, input_plot] = get_reference_circle(0,0.1,200)
 # [state_plot, input_plot] = get_reference_pointsintersection(x0,0,0.1,200)
 
@@ -457,7 +539,7 @@ plt.axis('square')
 plt.show()
 
 plt.figure()
-plt.plot(np.linspace(0,12000,12001),np.remainder(state_plot[2,:] + math.pi,2 * math.pi) - math.pi,'k')
+plt.plot(np.linspace(0,plot_samples,plot_samples + 1),np.remainder(state_plot[2,:] + math.pi,2 * math.pi) - math.pi,'k')
 plt.xlabel("$k$")
 plt.ylabel("$\\theta$")
 plt.axis([0,11999,-4,4])
@@ -504,7 +586,7 @@ ocp.dims.N = N
 
 # set cost
 Q = np.diag([1.0, 1.0, 0.1])
-R = np.diag([0.2, 0.1])
+R = np.diag([0.5, 0.1])
 
 W_e = N * Q
 W = scipy.linalg.block_diag(Q, R)
@@ -668,7 +750,7 @@ for i in range(Nsim):
     # reference
     # [state_ref, input_ref] = get_reference_pointsintersection(xnext,t_sim, Ts, N)
     # [state_ref, input_ref] = get_reference_circle(t_sim, Ts, N)
-    [state_ref, input_ref] = generate_reference_trajectory_from_timed_wayposes(timed_poses,t_sim,Ts,N,mode)
+    [state_ref, input_ref] = generate_reference_trajectory_from_timed_wayposes(timed_poses,t_sim,Ts,N,'go_straight_or_turn')
 
 
     for k in range(N):
