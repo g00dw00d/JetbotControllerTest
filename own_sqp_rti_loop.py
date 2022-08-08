@@ -42,6 +42,7 @@ from cvxpy import hstack, vstack
 
 import time
 from acados_template import AcadosOcp, AcadosOcpSolver
+from acados_template import AcadosSim, AcadosSimSolver
 # from unicycle_model import export_unicycle_ode_model_with_LocalConstraints
 import numpy as np
 import scipy.linalg
@@ -496,6 +497,7 @@ ny = nx + nu
 ny_e = nx
 nsh = 1
 N = 20
+Ts = Tf / N
 
 # set dimensions
 ocp.dims.N = N
@@ -591,16 +593,36 @@ ocp_solver = AcadosOcpSolver(ocp, json_file = 'acados_ocp.json')
 
 print(ocp.model)
 
-xnext = x0
-t_sim = 0.0
-Ts = Tf / N
 
-Nsim = 10#math.ceil(timed_poses[3,-2] / Ts) + N
+sim_delayCompensation = AcadosSim()
+simPeriod_delayCompensation = 0.05
+sim_delayCompensation.solver_options.T = simPeriod_delayCompensation
+sim_delayCompensation.model = model
+acados_integrator_delayCompensation = AcadosSimSolver(sim_delayCompensation)
+
+
+sim_applied = AcadosSim()
+simPeriod_applied = Tf / N - simPeriod_delayCompensation
+sim_applied.solver_options.T = simPeriod_applied
+sim_applied.model = model
+acados_integrator_applied = AcadosSimSolver(sim_applied)
+
+
+print(simPeriod_applied)
+
+xnext = x0
+xnext_nl = x0
+x_pf = x0
+u0 = np.zeros(nu,)
+t_sim = 0.0
+
+
+Nsim = math.ceil(timed_poses[3,-2] / Ts) + N
 print(Nsim)
 simX = np.ndarray((nx, Nsim + 1))
+simX_nl = np.ndarray((nx, Nsim + 1))
 simU = np.ndarray((nu, Nsim))
 simT = np.ndarray((1, Nsim + 1))
-
 
 
 
@@ -608,18 +630,40 @@ simT[0,0] = t_sim
 for j in range(nx):
     simX[j,0] = xnext[j]
 
+
+for j in range(nx):
+    simX_nl[j,0] = xnext[j]
+
 for i in range(Nsim):
     print("Time ",t_sim)
 
     # update initial condition
-    x0[0] = xnext[0]
-    x0[1] = xnext[1]
-    thetanext_wind = np.arctan2(np.sin(xnext[2] - x0[2]), np.cos(xnext[2] - x0[2])) + xnext[2]
+    x0[0] = xnext_nl[0]
+    x0[1] = xnext_nl[1]
+    thetanext_wind = np.arctan2(np.sin(xnext_nl[2] - x0[2]), np.cos(xnext_nl[2] - x0[2])) + xnext_nl[2]
     x0[2] = thetanext_wind
     # x0[2] = np.remainder(xnext[2] + math.pi, 2 * math.pi) - math.pi
 
-    ocp_solver.set(0, "lbx", x0)
-    ocp_solver.set(0, "ubx", x0)
+    t = time.time()
+    acados_integrator_delayCompensation.set("x",x0)
+    acados_integrator_delayCompensation.set("u",u0)
+    # solve
+    status = acados_integrator_delayCompensation.solve()
+    # get solution
+    x_dl_p = acados_integrator_delayCompensation.get("x") 
+    dc_time = time.time() - t
+    print("Delay compensation time is",dc_time,"s")
+
+    x_dl_sim = x_dl_p + 0.0025 * np.random.randn(3)
+
+
+    x_pf[0] = x_dl_p[0]
+    x_pf[1] = x_dl_p[1] 
+    thetanext_wind = np.arctan2(np.sin(x_dl_p[2] - x_pf[2]), np.cos(x_dl_p[2] - x_pf[2])) + x_pf[2]
+    x_pf[2] = thetanext_wind
+
+    ocp_solver.set(0, "lbx", x_pf)
+    ocp_solver.set(0, "ubx", x_pf)
 
     # reference
     # [state_ref, input_ref] = get_reference_pointsintersection(xnext,t_sim, Ts, N)
@@ -667,12 +711,35 @@ for i in range(Nsim):
     ur_pred = 1.0 / (r_a * WR) * upred[0,:] + WS / (2 * r_a * WR) * upred[1,:]
     ul_pred = 1.0 / (l_a * WR) * upred[0,:] - WS / (2 * l_a * WR) * upred[1,:]
 
+    # plt.show()
+    plt.pause(Ts / 100)
+   
+    # get next state
+    xnext = ocp_solver.get(1, "x") + 0.005 * np.random.randn(3)
+    
+    acados_integrator_applied.set("x",x_dl_sim)
+    acados_integrator_applied.set("u",u0)
+    # solve
+    status = acados_integrator_applied.solve()
+    # get solution
+    xnext_nl = acados_integrator_applied.get("x") + 0.0025 * np.random.randn(3)
+
+    # print(xnext)
+    t_sim += Ts
+
+    simT[0,i + 1] = t_sim
+    for j in range(nx):
+        simX[j,i + 1] = xnext[j]
+    
+    for j in range(nx):
+        simX_nl[j,i + 1] = xnext_nl[j]
+
     plt.figure(1)
     plt.cla()
     plt.plot(state_plot[0,:],state_plot[1,:],'k')
     plt.plot(state_ref[0,:],state_ref[1,:],'r--')
     plt.plot(xpred[0,:],xpred[1,:],'g:')
-    plt.plot(simX[0,:i],simX[1,:i],'b')
+    plt.plot(simX_nl[0,:i],simX_nl[1,:i],'b')
     plt.xlabel("$x$")
     plt.ylabel("$y$")
     plt.axis('square')
@@ -723,25 +790,15 @@ for i in range(Nsim):
     plt.axis([0, N - 1, -0.5, 0.5])
     plt.ylabel("$u^l$")
     plt.xlabel("$k$")
-
-    # plt.show()
-    plt.pause(Ts / 100)
-
-
-    # get next state
-    xnext = ocp_solver.get(1, "x") + 0.005 * np.random.randn(3)
-    # print(xnext)
-    t_sim += Ts
-
-    simT[0,i + 1] = t_sim
-    for j in range(nx):
-        simX[j,i + 1] = xnext[j]
+        
+        
 
 
 
 plt.figure(3)
-plt.plot(state_plot[0,:],state_plot[1,:],'k--')
-plt.plot(simX[0,:],simX[1,:],'b')
+plt.plot(state_plot[0,:],state_plot[1,:],'k')
+plt.plot(simX_nl[0,:],simX_nl[1,:],'b')
+plt.plot(simX[0,:],simX[1,:],'y--')
 plt.xlabel("$x$")
 plt.ylabel("$y$")
 plt.axis('square')
